@@ -1,4 +1,4 @@
-# Cosmic Vision
+# Cosmic Vision - <img align="center" alt="Vini-Dart" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dart/dart-original.svg" /> | <img align="center" alt="Vini-Flutter" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg" />
 
 Cosmic Vision é um inovador aplicativo em Dart/Flutter que permite uma emocionante jornada pelo cosmos, conectando-se à API APOD da NASA. Com ele, entusiastas da astronomia podem acessar imagens, explorar datas específicas, requisitar imagens aleatórias e até mesmo fazer download e compartilhar suas favoritas. É uma porta de entrada para o mundo cósmico em sua palma da mão.
 

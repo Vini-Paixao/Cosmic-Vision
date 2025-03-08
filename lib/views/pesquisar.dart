@@ -9,7 +9,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class PesquisarData extends StatefulWidget {
-  const PesquisarData({Key? key}) : super(key: key);
+  const PesquisarData({super.key});
 
   @override
   State<PesquisarData> createState() => _PesquisarDataState();
@@ -36,7 +36,7 @@ class _PesquisarDataState extends State<PesquisarData> {
   }
 
   final NasaApiClient _apiClient =
-      NasaApiClient(apiKey: 'RvMqHjtuK9Cm1X7WZYmtJ0KWskxuGdYw4uzpgqwV');
+      NasaApiClient(apiKey: 'eoj5wtUxWbFplv4vyHtB2Ag2ocntqIZPsZnF5gq4');
 
   Future<void> _selectData() async {
     final currentDate = DateTime.now();
@@ -343,7 +343,7 @@ class _PesquisarDataState extends State<PesquisarData> {
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
 
-  const VideoPlayerWidget({Key? key, required this.videoUrl}) : super(key: key);
+  const VideoPlayerWidget({super.key, required this.videoUrl});
 
   @override
   VideoPlayerWidgetState createState() => VideoPlayerWidgetState();

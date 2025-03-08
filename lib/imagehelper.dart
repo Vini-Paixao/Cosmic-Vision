@@ -1,21 +1,16 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
 class ImageHelper {
   void downloadMedia(BuildContext context, dynamic media, String date) async {
-    final storageDir = await getApplicationDocumentsDirectory();
-    final cosmicVisionDir = Directory('${storageDir.path}/media');
-    final dirExists = await cosmicVisionDir.exists();
-    if (!dirExists) {
-      cosmicVisionDir.create();
-    }
     final formatter = DateFormat('dd-MM-yyyy');
     final formattedDate = formatter.format(DateTime.parse(date));
     String fileName = '';
@@ -24,11 +19,27 @@ class ImageHelper {
       final response = await http.get(Uri.parse(media));
       final mediaBytes = response.bodyBytes;
       fileName = 'imagem-do-dia-$formattedDate.jpg';
-      final filePath = '${cosmicVisionDir.path}/$fileName';
-      final file = File(filePath);
-      await file.writeAsBytes(mediaBytes);
-      await ImageGallerySaver.saveFile(filePath,
-          name: 'Imagem do Dia $formattedDate');
+
+      // Salva a imagem na galeria
+      final result = await ImageGallerySaverPlus.saveImage(
+        Uint8List.fromList(mediaBytes),
+        quality: 100,
+        name: fileName,
+      );
+
+      if (result['isSuccess']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Imagem salva na galeria como $fileName'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Falha ao salvar a imagem.'),
+          ),
+        );
+      }
     } else if (media is Map<String, dynamic>) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -36,11 +47,6 @@ class ImageHelper {
         ),
       );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Mídia salva em ${cosmicVisionDir.path}/$fileName'),
-      ),
-    );
   }
 
   void shareImage(BuildContext context, String imageUrl) async {

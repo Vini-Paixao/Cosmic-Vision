@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 class DetalhesImagem extends StatefulWidget {
   final Map<String, dynamic> imageInfo;
 
-  const DetalhesImagem({Key? key, required this.imageInfo}) : super(key: key);
+  const DetalhesImagem({super.key, required this.imageInfo});
 
   @override
   State<DetalhesImagem> createState() => _DetalhesImagemState();
@@ -18,7 +18,7 @@ class DetalhesImagem extends StatefulWidget {
 class _DetalhesImagemState extends State<DetalhesImagem> {
   @override
   Widget build(BuildContext context) {
-    final data = widget.imageInfo['date'];
+    final data = "2023-12-04";
     final dateTime = DateTime.parse(data);
     DateFormat formatter = DateFormat('dd/MM/yyyy');
     String date = formatter.format(dateTime);
@@ -42,7 +42,7 @@ class _DetalhesImagemState extends State<DetalhesImagem> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: const NetworkImage(
-                'https://cosmicvision.marcuspaixao.com.br/wp-content/uploads/2024/08/Background.jpg'),
+                'https://marcuspaixao.com.br/wp-content/uploads/2025/03/Background.jpg'),
             repeat: ImageRepeat.repeat,
             fit: BoxFit.none,
             colorFilter: ColorFilter.mode(

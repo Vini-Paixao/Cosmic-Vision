@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class Aleatorio extends StatefulWidget {
-  const Aleatorio({Key? key}) : super(key: key);
+  const Aleatorio({super.key});
 
   @override
   State<Aleatorio> createState() => _AleatorioState();
@@ -18,10 +18,11 @@ class Aleatorio extends StatefulWidget {
 
 class _AleatorioState extends State<Aleatorio> {
   final NasaApiClient _apodApi =
-      NasaApiClient(apiKey: 'RvMqHjtuK9Cm1X7WZYmtJ0KWskxuGdYw4uzpgqwV');
+      NasaApiClient(apiKey: 'eoj5wtUxWbFplv4vyHtB2Ag2ocntqIZPsZnF5gq4');
   List<Map<String, dynamic>> _imageData = [];
   final TextEditingController _quantidadeController = TextEditingController();
   final int maxImageCount = 10;
+
   Future<void> _buscarImagensAleatorias() async {
     int quantidade = int.tryParse(_quantidadeController.text) ?? 0;
     if (quantidade > 0 && quantidade <= maxImageCount) {

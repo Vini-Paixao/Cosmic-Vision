@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -18,7 +19,6 @@ class NotificationHelper {
         InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // Configurar as opções da notificação
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(channelId, channelName,
             importance: Importance.max,
@@ -36,8 +36,8 @@ class NotificationHelper {
         tz.getLocation('America/Sao_Paulo'); // Defina a localização desejada
 
     // Defina os horários desejados
-    const morningTime = Time(10, 0, 0);
-    const eveningTime = Time(20, 0, 0);
+    final morningTime = const TimeOfDay(hour: 10, minute: 0);
+    final eveningTime = const TimeOfDay(hour: 20, minute: 0);
 
     // Agendar as notificações diárias
     await _scheduleNotificationAtTime(
@@ -52,7 +52,7 @@ class NotificationHelper {
         location,
         platformChannelSpecifics,
         eveningTime,
-        3,
+        2,
         'Boa Noite! Não perca a imagem de hoje!');
   }
 
@@ -60,7 +60,7 @@ class NotificationHelper {
       FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
       tz.Location location,
       NotificationDetails platformChannelSpecifics,
-      Time notificationTime,
+      TimeOfDay notificationTime,
       int notificationId,
       String title) async {
     final now = tz.TZDateTime.now(location);
@@ -76,11 +76,17 @@ class NotificationHelper {
     );
 
     // Agendar a notificação diária
-    await flutterLocalNotificationsPlugin.zonedSchedule(notificationId, title,
-        '😉', nextNotificationDateTime, platformChannelSpecifics,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-        payload: 'daily_notification');
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      notificationId,
+      title,
+      '😉',
+      nextNotificationDateTime,
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'daily_notification',
+    );
   }
 }

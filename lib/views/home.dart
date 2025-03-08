@@ -23,9 +23,10 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  Map<String, dynamic> _imageInfo = {}; // Adicionado esta linha
+  Map<String, dynamic> _imageInfo = {};
   String _heroImageUrl =
-      'https://cosmicvision.marcuspaixao.com.br/wp-content/uploads/2024/07/Destaque-Sobre.jpg';
+      'https://marcuspaixao.com.br/wp-content/uploads/2025/03/Destaque-Sobre.jpg';
+
   @override
   void initState() {
     super.initState();
@@ -33,19 +34,18 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _atualizarImagemInicial() async {
-    await Future.delayed(const Duration(milliseconds: 3000));
-
+    await Future.delayed(const Duration(milliseconds: 1000));
     final imageInfo = await _buscarImagemDestaque();
     if (imageInfo.isNotEmpty) {
       setState(() {
-        _heroImageUrl = imageInfo['hdurl'];
+        _heroImageUrl = imageInfo['url'];
         _imageInfo = imageInfo;
       });
     }
   }
 
   Future<Map<String, dynamic>> _buscarImagemDestaque() async {
-    const api = "RvMqHjtuK9Cm1X7WZYmtJ0KWskxuGdYw4uzpgqwV";
+    const api = "eoj5wtUxWbFplv4vyHtB2Ag2ocntqIZPsZnF5gq4";
     const data = "2023-12-04";
     final url = Uri.parse(
         'https://api.nasa.gov/planetary/apod?api_key=$api&date=$data');
@@ -55,11 +55,11 @@ class _HomeState extends State<Home> {
       final Map<String, dynamic> item = jsonDecode(response.body);
 
       final mediaType = item['media_type'];
-      final imageUrl = item['hdurl'];
+      final imageUrl = item['url'];
 
       return {
         'title': item['title'],
-        'hdurl': imageUrl,
+        'url': imageUrl,
         'explanation': item['explanation'],
         'date': item['date'],
         'media_type': mediaType,
@@ -71,6 +71,7 @@ class _HomeState extends State<Home> {
   }
 
   int _currentIndex = 0;
+
   // ignore: unused_field
   int _selectedIndex = 0;
 
@@ -304,11 +305,10 @@ class _HomeState extends State<Home> {
       decoration: BoxDecoration(
         image: DecorationImage(
           image: const NetworkImage(
-              'https://cosmicvision.marcuspaixao.com.br/wp-content/uploads/2024/08/Background.jpg'),
-          repeat: ImageRepeat.repeat,
-          fit: BoxFit.none,
+              'https://marcuspaixao.com.br/wp-content/uploads/2025/03/Background.jpg'),
+          fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.2), // Opacidade de 50%
+            Colors.black.withOpacity(0.2),
             BlendMode.dstATop,
           ),
         ),
@@ -509,8 +509,8 @@ class _HomeState extends State<Home> {
                         aspectRatio: 16 / 9,
                         viewportFraction: 0.8,
                         initialPage: 0,
-                        enableInfiniteScroll:
-                            true, // Isso habilita o carrossel infinito
+                        enableInfiniteScroll: true,
+                        // Isso habilita o carrossel infinito
                         reverse: false,
                         autoPlay: true,
                         autoPlayInterval: const Duration(seconds: 3),

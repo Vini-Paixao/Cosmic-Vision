@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class PeriodoData extends StatefulWidget {
-  const PeriodoData({Key? key}) : super(key: key);
+  const PeriodoData({super.key});
 
   @override
   State<PeriodoData> createState() => _PeriodoDataState();

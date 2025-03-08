@@ -8,7 +8,7 @@ import 'package:cosmicvision/models/nasa_api_client.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class ImagemDoDia extends StatefulWidget {
-  const ImagemDoDia({Key? key}) : super(key: key);
+  const ImagemDoDia({super.key});
 
   @override
   ImagemDoDiaState createState() => ImagemDoDiaState();
@@ -17,7 +17,7 @@ class ImagemDoDia extends StatefulWidget {
 class ImagemDoDiaState extends State<ImagemDoDia> {
   late Future<Map<String, dynamic>> imagemDoDia;
   final NasaApiClient nasaApiClient =
-      NasaApiClient(apiKey: 'RvMqHjtuK9Cm1X7WZYmtJ0KWskxuGdYw4uzpgqwV');
+      NasaApiClient(apiKey: 'eoj5wtUxWbFplv4vyHtB2Ag2ocntqIZPsZnF5gq4');
   var titulo = '';
   var desc = '';
 
@@ -81,7 +81,7 @@ class ImagemDoDiaState extends State<ImagemDoDia> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: const NetworkImage(
-                'https://cosmicvision.marcuspaixao.com.br/wp-content/uploads/2024/08/Background.jpg'),
+                'https://marcuspaixao.com.br/wp-content/uploads/2025/03/Background.jpg'),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.2),

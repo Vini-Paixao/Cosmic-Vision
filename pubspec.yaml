@@ -1,7 +1,7 @@
 name: cosmic_vision
-description: "A new Flutter project."
+description: "Explore o universo com as imagens astronômicas da NASA através da API APOD."
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
 
 environment:
   sdk: ^3.6.0

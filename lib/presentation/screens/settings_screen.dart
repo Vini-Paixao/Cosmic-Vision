@@ -85,9 +85,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.star_outline_rounded,
                       title: 'Avaliar o app',
                       subtitle: 'Deixe sua avaliação na loja',
-                      onTap: () {
-                        // TODO: Link para a loja
-                      },
+                      onTap: () => _openUrl(
+                        'https://play.google.com/store/apps/details?id=br.com.marcuspaixao.cosmicvision',
+                      ),
                     ),
                   ],
                 ),

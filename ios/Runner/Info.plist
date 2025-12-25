@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Cosmic Vision precisa de acesso para salvar imagens astronômicas na sua galeria.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cosmic Vision precisa de acesso à sua galeria para salvar imagens astronômicas.</string>
 </dict>
 </plist>

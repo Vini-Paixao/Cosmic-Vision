@@ -10,12 +10,17 @@ class ApiConstants {
   /// Endpoint APOD
   static const String apodEndpoint = '/apod';
 
-  /// API Key da NASA (substituir pela sua chave)
+  /// API Key da NASA - carregada via --dart-define
   /// Obtenha em: https://api.nasa.gov/
   ///
   /// DEMO_KEY tem limite de 30 req/hora e 50 req/dia
   /// API Key própria: 1000 req/hora
-  static const String apiKey = 'dMTbAJJ8UgDsExFy6YgEknRNauf5KIkJe6ycj0GK';
+  ///
+  /// Para executar: flutter run --dart-define=NASA_API_KEY=sua_chave_aqui
+  static const String apiKey = String.fromEnvironment(
+    'NASA_API_KEY',
+    defaultValue: 'DEMO_KEY',
+  );
 
   /// URL do site da NASA
   static const String nasaWebsite = 'https://www.nasa.gov/';

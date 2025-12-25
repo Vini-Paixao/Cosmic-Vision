@@ -108,13 +108,15 @@ class _SplashScreenState extends State<SplashScreen>
           height: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppGradients.nebula,
             boxShadow: AppShadows.glowNebula,
           ),
-          child: const Icon(
-            Icons.auto_awesome_rounded,
-            size: 60,
-            color: AppColors.white,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/icon/icon.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         const SizedBox(height: AppDimensions.xl),

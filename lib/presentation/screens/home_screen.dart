@@ -90,14 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              gradient: AppGradients.nebula,
               shape: BoxShape.circle,
               boxShadow: AppShadows.glowStardust,
             ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              size: 24,
-              color: AppColors.white,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/icon/icon.png',
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(width: AppDimensions.md),

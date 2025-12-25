@@ -1,5 +1,6 @@
 import '../../domain/entities/apod_entity.dart';
 import '../../domain/repositories/favorites_repository.dart';
+import '../../services/favorites_sync_service.dart';
 import 'base_viewmodel.dart';
 
 /// ViewModel da tela de detalhes
@@ -11,16 +12,16 @@ class DetailViewModel extends BaseViewModel {
   }) : _favoritesRepository = favoritesRepository;
 
   final FavoritesRepository _favoritesRepository;
+  final FavoritesSyncService _syncService = FavoritesSyncService.instance;
 
   ApodEntity? _apod;
-  bool _isFavorite = false;
   bool _isDescriptionExpanded = false;
 
   /// APOD atual
   ApodEntity? get apod => _apod;
 
-  /// Indica se é favorito
-  bool get isFavorite => _isFavorite;
+  /// Indica se é favorito (usa o serviço de sincronização)
+  bool get isFavorite => _apod != null && _syncService.isFavorite(_apod!.date);
 
   /// Indica se a descrição está expandida
   bool get isDescriptionExpanded => _isDescriptionExpanded;
@@ -28,25 +29,15 @@ class DetailViewModel extends BaseViewModel {
   /// Inicializa com um APOD
   Future<void> initialize(ApodEntity apod) async {
     _apod = apod;
-    await _checkFavoriteStatus();
+    
+    // Escuta mudanças no serviço de sincronização
+    _syncService.addListener(_onFavoritesChanged);
+    
     setSuccess();
   }
-
-  /// Verifica se é favorito
-  Future<void> _checkFavoriteStatus() async {
-    final apod = _apod;
-    if (apod == null) return;
-
-    final result = await _favoritesRepository.isFavorite(apod.date);
-    result.fold(
-      onSuccess: (isFav) {
-        _isFavorite = isFav;
-        notifyListeners();
-      },
-      onFailure: (_) {
-        _isFavorite = false;
-      },
-    );
+  
+  void _onFavoritesChanged() {
+    notifyListeners();
   }
 
   /// Alterna o status de favorito
@@ -54,12 +45,11 @@ class DetailViewModel extends BaseViewModel {
     final apod = _apod;
     if (apod == null) return;
 
-    if (_isFavorite) {
+    if (isFavorite) {
       final result = await _favoritesRepository.removeFavoriteByDate(apod.date);
       result.fold(
         onSuccess: (_) {
-          _isFavorite = false;
-          notifyListeners();
+          _syncService.removeFavorite(apod.date);
         },
         onFailure: (_) {},
       );
@@ -67,8 +57,7 @@ class DetailViewModel extends BaseViewModel {
       final result = await _favoritesRepository.addFavorite(apod);
       result.fold(
         onSuccess: (_) {
-          _isFavorite = true;
-          notifyListeners();
+          _syncService.addFavorite(apod.date);
         },
         onFailure: (_) {},
       );
@@ -81,8 +70,9 @@ class DetailViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  /// Atualiza o status de favorito
-  Future<void> refreshFavoriteStatus() async {
-    await _checkFavoriteStatus();
+  @override
+  void dispose() {
+    _syncService.removeListener(_onFavoritesChanged);
+    super.dispose();
   }
 }

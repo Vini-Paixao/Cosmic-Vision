@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Permissões para versões antigas do Android (abaixo do Android 10) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    
+    <!-- Internet para download de imagens -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
     <application
         android:label="cosmic_vision"
         android:name="${applicationName}"

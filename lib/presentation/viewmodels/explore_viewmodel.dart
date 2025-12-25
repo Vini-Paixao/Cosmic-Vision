@@ -1,6 +1,7 @@
 import '../../domain/entities/apod_entity.dart';
 import '../../domain/repositories/apod_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
+import '../../services/favorites_sync_service.dart';
 import 'base_viewmodel.dart';
 
 /// ViewModel da tela Explore
@@ -11,13 +12,16 @@ class ExploreViewModel extends BaseViewModel {
     required ApodRepository apodRepository,
     required FavoritesRepository favoritesRepository,
   })  : _apodRepository = apodRepository,
-        _favoritesRepository = favoritesRepository;
+        _favoritesRepository = favoritesRepository {
+    // Escuta mudanças no serviço de sincronização
+    _syncService.addListener(_onFavoritesChanged);
+  }
 
   final ApodRepository _apodRepository;
   final FavoritesRepository _favoritesRepository;
+  final FavoritesSyncService _syncService = FavoritesSyncService.instance;
 
   List<ApodEntity> _apods = [];
-  final Set<String> _favoriteDates = {};
   DateTime? _selectedDate;
   bool _isLoadingMore = false;
 
@@ -29,6 +33,10 @@ class ExploreViewModel extends BaseViewModel {
 
   /// Indica se está carregando mais itens
   bool get isLoadingMore => _isLoadingMore;
+  
+  void _onFavoritesChanged() {
+    notifyListeners();
+  }
 
   /// Carrega APODs aleatórios
   Future<void> loadRandomApods({int count = 10}) async {
@@ -135,17 +143,16 @@ class ExploreViewModel extends BaseViewModel {
 
   /// Verifica se um APOD está nos favoritos
   bool isFavorite(String date) {
-    return _favoriteDates.contains(date);
+    return _syncService.isFavorite(date);
   }
 
   /// Alterna o status de favorito de um APOD
   Future<void> toggleFavorite(ApodEntity apod) async {
-    if (_favoriteDates.contains(apod.date)) {
+    if (_syncService.isFavorite(apod.date)) {
       final result = await _favoritesRepository.removeFavoriteByDate(apod.date);
       result.fold(
         onSuccess: (_) {
-          _favoriteDates.remove(apod.date);
-          notifyListeners();
+          _syncService.removeFavorite(apod.date);
         },
         onFailure: (_) {},
       );
@@ -153,32 +160,39 @@ class ExploreViewModel extends BaseViewModel {
       final result = await _favoritesRepository.addFavorite(apod);
       result.fold(
         onSuccess: (_) {
-          _favoriteDates.add(apod.date);
-          notifyListeners();
+          _syncService.addFavorite(apod.date);
         },
         onFailure: (_) {},
       );
     }
   }
 
-  /// Carrega o status de favorito de todos os APODs
+  /// Carrega o status de favorito de todos os APODs e sincroniza
   Future<void> _loadFavoriteStatuses() async {
-    _favoriteDates.clear();
+    final favoriteDates = <String>{};
 
     for (final apod in _apods) {
       final result = await _favoritesRepository.isFavorite(apod.date);
       result.fold(
         onSuccess: (isFav) {
-          if (isFav) _favoriteDates.add(apod.date);
+          if (isFav) favoriteDates.add(apod.date);
         },
         onFailure: (_) {},
       );
     }
+    
+    // Atualiza o serviço de sincronização com as datas dos favoritos atuais
+    // Isso só adiciona os que estão na lista, não remove os outros
+    for (final date in favoriteDates) {
+      if (!_syncService.isFavorite(date)) {
+        _syncService.addFavorite(date);
+      }
+    }
   }
 
-  /// Atualiza os status de favoritos
-  Future<void> refreshFavoriteStatuses() async {
-    await _loadFavoriteStatuses();
-    notifyListeners();
+  @override
+  void dispose() {
+    _syncService.removeListener(_onFavoritesChanged);
+    super.dispose();
   }
 }

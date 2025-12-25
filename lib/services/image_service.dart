@@ -90,19 +90,29 @@ class ImageService {
 
       Logger.debug('Resultado do salvamento: $result');
 
-      if (result != null && result['isSuccess'] == true) {
-        final filePath = result['filePath'] as String?;
-        Logger.info('Imagem salva com sucesso: $filePath');
+      // O resultado pode ser um Map ou um dynamic dependendo da plataforma
+      if (result != null) {
+        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 'true';
         
-        return ImageServiceSuccess(
-          message: 'Imagem salva na galeria!',
-          filePath: filePath,
-        );
+        if (isSuccess) {
+          final filePath = result['filePath']?.toString();
+          Logger.info('Imagem salva com sucesso: $filePath');
+          
+          return ImageServiceSuccess(
+            message: 'Imagem salva na galeria!',
+            filePath: filePath,
+          );
+        } else {
+          final errorMsg = result['errorMessage']?.toString() ?? 'Erro desconhecido ao salvar';
+          Logger.error('Falha ao salvar na galeria: $errorMsg');
+          return ImageServiceError(
+            message: 'Erro ao salvar na galeria: $errorMsg',
+          );
+        }
       } else {
-        final errorMsg = result?['errorMessage'] ?? 'Erro desconhecido';
-        Logger.error('Falha ao salvar: $errorMsg');
-        return ImageServiceError(
-          message: 'Erro ao salvar na galeria: $errorMsg',
+        Logger.error('Resultado nulo ao salvar imagem');
+        return const ImageServiceError(
+          message: 'Erro ao salvar na galeria: resultado nulo',
         );
       }
     } on DioException catch (e) {
@@ -210,32 +220,30 @@ class ImageService {
       
       Logger.debug('Android SDK: $sdkInt');
 
-      if (sdkInt >= 33) {
-        // Android 13+ (API 33+): Precisa de permissão de fotos
-        final status = await Permission.photos.request();
-        Logger.debug('Permissão photos: $status');
-        
-        if (status.isDenied || status.isPermanentlyDenied) {
-          // Tenta permissão de storage como fallback
-          final storageStatus = await Permission.storage.request();
-          Logger.debug('Permissão storage (fallback): $storageStatus');
-          return storageStatus.isGranted;
-        }
-        return status.isGranted || status.isLimited;
-      } else if (sdkInt >= 29) {
-        // Android 10-12 (API 29-32): Pode salvar em MediaStore sem permissão
+      // Android 10+ (API 29+): Não precisa de permissão para salvar na galeria
+      // O ImageGallerySaverPlus usa MediaStore que não requer permissão de storage
+      if (sdkInt >= 29) {
+        Logger.debug('Android 10+: Permissão não necessária para MediaStore');
         return true;
       } else {
-        // Android 9 e anteriores: Precisa de permissão de storage
+        // Android 9 e anteriores (API < 29): Precisa de permissão de storage
         final status = await Permission.storage.request();
         Logger.debug('Permissão storage: $status');
+        
+        if (status.isPermanentlyDenied) {
+          Logger.debug('Permissão negada permanentemente');
+          return false;
+        }
+        
         return status.isGranted;
       }
     } else if (Platform.isIOS) {
-      final status = await Permission.photos.request();
+      // iOS: Precisa de permissão de fotos para adicionar à biblioteca
+      final status = await Permission.photosAddOnly.request();
+      Logger.debug('Permissão photosAddOnly: $status');
       return status.isGranted || status.isLimited;
     }
-    return false;
+    return true;
   }
 
   String _generateFileName(ApodEntity apod) {

@@ -1,6 +1,7 @@
 import '../../core/utils/logger.dart';
 import '../../domain/entities/favorite_entity.dart';
 import '../../domain/repositories/favorites_repository.dart';
+import '../../services/favorites_sync_service.dart';
 import 'base_viewmodel.dart';
 
 /// ViewModel da tela Favorites
@@ -12,6 +13,7 @@ class FavoritesViewModel extends BaseViewModel {
   }) : _favoritesRepository = favoritesRepository;
 
   final FavoritesRepository _favoritesRepository;
+  final FavoritesSyncService _syncService = FavoritesSyncService.instance;
 
   List<FavoriteEntity> _favorites = [];
   List<FavoriteEntity> _filteredFavorites = [];
@@ -55,6 +57,11 @@ class FavoritesViewModel extends BaseViewModel {
         Logger.debug('FavoritesViewModel: Carregados ${favorites.length} favoritos');
         _favorites = favorites;
         _applySearch();
+        
+        // Sincroniza o serviço com as datas dos favoritos
+        final favoriteDates = favorites.map((f) => f.apod.date).toSet();
+        _syncService.updateFavorites(favoriteDates);
+        
         setSuccess();
       },
       onFailure: (failure) {
@@ -79,6 +86,10 @@ class FavoritesViewModel extends BaseViewModel {
       onSuccess: (_) {
         _favorites.removeWhere((f) => f.id == favorite.id);
         _applySearch();
+        
+        // Notifica o serviço de sincronização
+        _syncService.removeFavorite(favorite.apod.date);
+        
         notifyListeners();
         return true;
       },
@@ -94,6 +105,10 @@ class FavoritesViewModel extends BaseViewModel {
       onSuccess: (_) {
         _favorites.removeWhere((f) => f.apod.date == date);
         _applySearch();
+        
+        // Notifica o serviço de sincronização
+        _syncService.removeFavorite(date);
+        
         notifyListeners();
         return true;
       },
@@ -154,6 +169,10 @@ class FavoritesViewModel extends BaseViewModel {
       onSuccess: (_) {
         _favorites.clear();
         _filteredFavorites.clear();
+        
+        // Notifica o serviço de sincronização
+        _syncService.clearAll();
+        
         notifyListeners();
         return true;
       },

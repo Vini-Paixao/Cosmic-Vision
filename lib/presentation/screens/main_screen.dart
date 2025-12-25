@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/favorites_viewmodel.dart';
-import '../viewmodels/home_viewmodel.dart';
 import '../widgets/cosmic_bottom_nav.dart';
 import 'explore_screen.dart';
 import 'favorites_screen.dart';
@@ -19,7 +18,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  int _previousIndex = 0;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -52,17 +50,12 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   void _onTabTapped(int index) {
-    _previousIndex = _currentIndex;
     setState(() => _currentIndex = index);
     
     // Recarrega favoritos quando navegar para a aba de favoritos
+    // Isso sincroniza o FavoritesSyncService com os dados do banco
     if (index == 2) {
       context.read<FavoritesViewModel>().loadFavorites();
-    }
-    
-    // Atualiza status de favorito na Home quando voltar para ela
-    if (index == 0 && _previousIndex != 0) {
-      context.read<HomeViewModel>().refreshFavoriteStatus();
     }
   }
 

@@ -13,6 +13,7 @@ import '../data/repositories/settings_repository_impl.dart';
 import '../domain/repositories/apod_repository.dart';
 import '../domain/repositories/favorites_repository.dart';
 import '../domain/repositories/settings_repository.dart';
+import '../services/favorites_sync_service.dart';
 
 /// Container de injeção de dependências
 class DependencyInjection {
@@ -88,7 +89,25 @@ class DependencyInjection {
       localDataSource: _settingsLocalDataSource,
     );
 
+    // Inicializa o serviço de sincronização de favoritos
+    await _initializeFavoritesSyncService();
+
     _isInitialized = true;
+  }
+  
+  /// Inicializa o serviço de sincronização de favoritos
+  Future<void> _initializeFavoritesSyncService() async {
+    final result = await _favoritesRepository.getAllFavorites();
+    result.fold(
+      onSuccess: (favorites) {
+        final favoriteDates = favorites.map((f) => f.apod.date).toSet();
+        FavoritesSyncService.instance.initialize(favoriteDates);
+      },
+      onFailure: (_) {
+        // Se falhar, inicializa com conjunto vazio
+        FavoritesSyncService.instance.initialize({});
+      },
+    );
   }
 
   // Getters para acesso às dependências

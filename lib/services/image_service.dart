@@ -1,0 +1,328 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../core/utils/logger.dart';
+import '../domain/entities/apod_entity.dart';
+
+/// Resultado de operação do serviço de imagem
+sealed class ImageServiceResult {
+  const ImageServiceResult();
+}
+
+class ImageServiceSuccess extends ImageServiceResult {
+  const ImageServiceSuccess({required this.message, this.filePath});
+  final String message;
+  final String? filePath;
+}
+
+class ImageServiceError extends ImageServiceResult {
+  const ImageServiceError({required this.message});
+  final String message;
+}
+
+/// Serviço para download e compartilhamento de imagens
+class ImageService {
+  ImageService._();
+  
+  static final ImageService instance = ImageService._();
+  
+  final Dio _dio = Dio();
+  final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
+
+  /// Faz download da imagem do APOD para a galeria
+  Future<ImageServiceResult> downloadImage(
+    ApodEntity apod, {
+    bool useHd = true,
+    Function(int, int)? onProgress,
+  }) async {
+    try {
+      Logger.info('Iniciando download: ${apod.title}');
+      
+      // Verifica e solicita permissões
+      final hasPermission = await _requestStoragePermission();
+      if (!hasPermission) {
+        return const ImageServiceError(
+          message: 'Permissão de armazenamento negada. Por favor, permita o acesso nas configurações do app.',
+        );
+      }
+
+      // Obtém a URL da imagem
+      final imageUrl = useHd ? (apod.hdUrl ?? apod.url) : apod.url;
+      
+      Logger.debug('Baixando de: $imageUrl');
+
+      // Faz o download dos bytes da imagem
+      final response = await _dio.get<List<int>>(
+        imageUrl,
+        onReceiveProgress: onProgress,
+        options: Options(
+          responseType: ResponseType.bytes,
+        ),
+      );
+
+      if (response.data == null || response.data!.isEmpty) {
+        return const ImageServiceError(
+          message: 'Erro ao baixar a imagem: dados vazios',
+        );
+      }
+
+      final imageBytes = Uint8List.fromList(response.data!);
+      
+      // Gera nome do arquivo
+      final fileName = _generateFileName(apod);
+      
+      Logger.debug('Salvando imagem: $fileName (${imageBytes.length} bytes)');
+
+      // Salva na galeria usando image_gallery_saver_plus
+      final result = await ImageGallerySaverPlus.saveImage(
+        imageBytes,
+        quality: 100,
+        name: fileName,
+      );
+
+      Logger.debug('Resultado do salvamento: $result');
+
+      if (result != null && result['isSuccess'] == true) {
+        final filePath = result['filePath'] as String?;
+        Logger.info('Imagem salva com sucesso: $filePath');
+        
+        return ImageServiceSuccess(
+          message: 'Imagem salva na galeria!',
+          filePath: filePath,
+        );
+      } else {
+        final errorMsg = result?['errorMessage'] ?? 'Erro desconhecido';
+        Logger.error('Falha ao salvar: $errorMsg');
+        return ImageServiceError(
+          message: 'Erro ao salvar na galeria: $errorMsg',
+        );
+      }
+    } on DioException catch (e) {
+      Logger.error('Erro de rede no download', error: e);
+      return ImageServiceError(
+        message: 'Erro ao baixar: ${e.message ?? 'Falha na conexão'}',
+      );
+    } catch (e, stackTrace) {
+      Logger.error('Erro no download', error: e, stackTrace: stackTrace);
+      return ImageServiceError(
+        message: 'Erro ao salvar a imagem: $e',
+      );
+    }
+  }
+
+  /// Compartilha o APOD (imagem + texto)
+  Future<ImageServiceResult> shareApod(
+    ApodEntity apod, {
+    Rect? sharePositionOrigin,
+  }) async {
+    try {
+      Logger.info('Iniciando compartilhamento: ${apod.title}');
+
+      // Texto de compartilhamento
+      final shareText = _buildShareText(apod);
+
+      if (apod.isVideo) {
+        // Para vídeos, compartilha apenas o texto com link
+        await SharePlus.instance.share(
+          ShareParams(
+            text: shareText,
+            subject: apod.title,
+            sharePositionOrigin: sharePositionOrigin,
+          ),
+        );
+      } else {
+        // Para imagens, tenta baixar e compartilhar o arquivo
+        final imageFile = await _downloadToTemp(apod);
+        
+        if (imageFile != null) {
+          await SharePlus.instance.share(
+            ShareParams(
+              files: [XFile(imageFile.path)],
+              text: shareText,
+              subject: apod.title,
+              sharePositionOrigin: sharePositionOrigin,
+            ),
+          );
+          
+          // Agenda limpeza do arquivo temporário após um delay
+          Future.delayed(const Duration(minutes: 2), () {
+            imageFile.delete().catchError((_) => imageFile);
+          });
+        } else {
+          // Se não conseguiu baixar, compartilha só o texto
+          await SharePlus.instance.share(
+            ShareParams(
+              text: shareText,
+              subject: apod.title,
+              sharePositionOrigin: sharePositionOrigin,
+            ),
+          );
+        }
+      }
+
+      Logger.info('Compartilhamento iniciado');
+      return const ImageServiceSuccess(message: 'Compartilhado!');
+    } catch (e) {
+      Logger.error('Erro ao compartilhar', error: e);
+      return ImageServiceError(
+        message: 'Erro ao compartilhar: $e',
+      );
+    }
+  }
+
+  /// Compartilha apenas o texto/link do APOD
+  Future<ImageServiceResult> shareText(
+    ApodEntity apod, {
+    Rect? sharePositionOrigin,
+  }) async {
+    try {
+      final shareText = _buildShareText(apod);
+      
+      await SharePlus.instance.share(
+        ShareParams(
+          text: shareText,
+          subject: apod.title,
+          sharePositionOrigin: sharePositionOrigin,
+        ),
+      );
+
+      return const ImageServiceSuccess(message: 'Compartilhando...');
+    } catch (e) {
+      Logger.error('Erro ao compartilhar texto', error: e);
+      return ImageServiceError(message: 'Erro ao compartilhar: $e');
+    }
+  }
+
+  // Métodos privados
+
+  Future<bool> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final androidInfo = await _deviceInfo.androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+      
+      Logger.debug('Android SDK: $sdkInt');
+
+      if (sdkInt >= 33) {
+        // Android 13+ (API 33+): Precisa de permissão de fotos
+        final status = await Permission.photos.request();
+        Logger.debug('Permissão photos: $status');
+        
+        if (status.isDenied || status.isPermanentlyDenied) {
+          // Tenta permissão de storage como fallback
+          final storageStatus = await Permission.storage.request();
+          Logger.debug('Permissão storage (fallback): $storageStatus');
+          return storageStatus.isGranted;
+        }
+        return status.isGranted || status.isLimited;
+      } else if (sdkInt >= 29) {
+        // Android 10-12 (API 29-32): Pode salvar em MediaStore sem permissão
+        return true;
+      } else {
+        // Android 9 e anteriores: Precisa de permissão de storage
+        final status = await Permission.storage.request();
+        Logger.debug('Permissão storage: $status');
+        return status.isGranted;
+      }
+    } else if (Platform.isIOS) {
+      final status = await Permission.photos.request();
+      return status.isGranted || status.isLimited;
+    }
+    return false;
+  }
+
+  String _generateFileName(ApodEntity apod) {
+    // Remove caracteres especiais do título
+    final safeTitle = apod.title
+        .replaceAll(RegExp(r'[^\w\s]'), '')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .toLowerCase();
+    
+    // Limita tamanho do nome
+    final truncatedTitle = safeTitle.length > 30 
+        ? safeTitle.substring(0, 30) 
+        : safeTitle;
+    
+    // Adiciona timestamp para evitar sobrescrita
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    
+    return 'cosmic_vision_${apod.date}_${truncatedTitle}_$timestamp';
+  }
+
+  String _buildShareText(ApodEntity apod) {
+    final buffer = StringBuffer();
+    
+    buffer.writeln('🌌 ${apod.title}');
+    buffer.writeln();
+    buffer.writeln('📅 ${apod.formattedDate}');
+    buffer.writeln();
+    
+    // Adiciona descrição truncada
+    final description = apod.explanation.length > 280
+        ? '${apod.explanation.substring(0, 280)}...'
+        : apod.explanation;
+    buffer.writeln(description);
+    buffer.writeln();
+    
+    if (apod.hasCopyright) {
+      buffer.writeln('📷 ${apod.copyright}');
+      buffer.writeln();
+    }
+    
+    buffer.writeln('🔗 Ver mais: https://apod.nasa.gov/apod/ap${_formatDateForUrl(apod.date)}.html');
+    buffer.writeln();
+    buffer.writeln('Compartilhado via Cosmic Vision 🚀');
+    
+    return buffer.toString();
+  }
+
+  String _formatDateForUrl(String date) {
+    // Converte 2024-12-25 para 241225
+    final parts = date.split('-');
+    if (parts.length == 3) {
+      final year = parts[0].substring(2);
+      final month = parts[1];
+      final day = parts[2];
+      return '$year$month$day';
+    }
+    return date.replaceAll('-', '');
+  }
+
+  Future<File?> _downloadToTemp(ApodEntity apod) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final fileName = _generateFileName(apod);
+      final filePath = '${tempDir.path}/$fileName.jpg';
+      
+      final imageUrl = apod.hdUrl ?? apod.url;
+      
+      Logger.debug('Baixando para temp: $filePath');
+      
+      await _dio.download(
+        imageUrl,
+        filePath,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      
+      final file = File(filePath);
+      if (await file.exists()) {
+        Logger.debug('Arquivo temp criado: ${await file.length()} bytes');
+        return file;
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Erro ao baixar para temp', error: e);
+      return null;
+    }
+  }
+}
+
+/// Acesso global ao serviço
+ImageService get imageService => ImageService.instance;

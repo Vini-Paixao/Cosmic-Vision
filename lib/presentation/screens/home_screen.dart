@@ -338,14 +338,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Ver detalhes',
                   style: AppTextStyles.labelLarge.copyWith(
-                    color: AppColors.nebulaPurple,
+                    color: AppColors.accentOrange,
                   ),
                 ),
                 const SizedBox(width: AppDimensions.xs),
                 const Icon(
                   Icons.arrow_forward_rounded,
                   size: 18,
-                  color: AppColors.nebulaPurple,
+                  color: AppColors.accentOrange,
                 ),
               ],
             ),

@@ -483,7 +483,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   Text(
                     isExpanded ? 'Ver menos' : 'Ver mais',
                     style: AppTextStyles.labelLarge.copyWith(
-                      color: AppColors.nebulaPurple,
+                      color: AppColors.accentOrange,
                     ),
                   ),
                   Icon(
@@ -491,7 +491,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
                     size: 18,
-                    color: AppColors.nebulaPurple,
+                    color: AppColors.accentOrange,
                   ),
                 ],
               ),

@@ -40,74 +40,113 @@ class DependencyInjection {
 
   /// Inicializa todas as dependências
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      debugPrint('⚠️ [DI] Já inicializado, ignorando...');
+      return;
+    }
 
-    // SharedPreferences
-    _sharedPreferences = await SharedPreferences.getInstance();
+    debugPrint('🔧 [DI] Iniciando injeção de dependências...');
 
-    // Dio com configurações
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: ApiConstants.baseUrl,
-        connectTimeout: Duration(seconds: ApiConstants.connectionTimeout),
-        receiveTimeout: Duration(seconds: ApiConstants.receiveTimeout),
-        headers: {
-          'Accept': 'application/json',
-        },
-      ),
-    );
+    try {
+      // SharedPreferences
+      debugPrint('💾 [DI] Inicializando SharedPreferences...');
+      _sharedPreferences = await SharedPreferences.getInstance();
+      debugPrint('✅ [DI] SharedPreferences OK');
 
-    // Interceptors para logging (apenas em debug)
-    assert(() {
-      _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          logPrint: (object) => debugPrint('🌐 $object'),
+      // Dio com configurações
+      debugPrint('🌐 [DI] Configurando Dio HTTP client...');
+      _dio = Dio(
+        BaseOptions(
+          baseUrl: ApiConstants.baseUrl,
+          connectTimeout: Duration(seconds: ApiConstants.connectionTimeout),
+          receiveTimeout: Duration(seconds: ApiConstants.receiveTimeout),
+          headers: {
+            'Accept': 'application/json',
+          },
         ),
       );
-      return true;
-    }());
+      debugPrint('✅ [DI] Dio configurado - BaseURL: ${ApiConstants.baseUrl}');
 
-    // Datasources
-    _apodRemoteDataSource = ApodRemoteDataSourceImpl(dio: _dio);
-    _favoritesLocalDataSource = FavoritesLocalDataSourceImpl(
-      databaseHelper: DatabaseHelper.instance,
-    );
-    _settingsLocalDataSource = SettingsLocalDataSourceImpl(
-      sharedPreferences: _sharedPreferences,
-    );
+      // Interceptors para logging (apenas em debug)
+      assert(() {
+        _dio.interceptors.add(
+          LogInterceptor(
+            requestBody: true,
+            responseBody: true,
+            logPrint: (object) => debugPrint('🌐 $object'),
+          ),
+        );
+        return true;
+      }());
 
-    // Repositórios
-    _apodRepository = ApodRepositoryImpl(
-      remoteDataSource: _apodRemoteDataSource,
-    );
-    _favoritesRepository = FavoritesRepositoryImpl(
-      localDataSource: _favoritesLocalDataSource,
-    );
-    _settingsRepository = SettingsRepositoryImpl(
-      localDataSource: _settingsLocalDataSource,
-    );
+      // Datasources
+      debugPrint('📡 [DI] Criando datasources...');
+      _apodRemoteDataSource = ApodRemoteDataSourceImpl(dio: _dio);
+      debugPrint('✅ [DI] ApodRemoteDataSource OK');
+      
+      _favoritesLocalDataSource = FavoritesLocalDataSourceImpl(
+        databaseHelper: DatabaseHelper.instance,
+      );
+      debugPrint('✅ [DI] FavoritesLocalDataSource OK');
+      
+      _settingsLocalDataSource = SettingsLocalDataSourceImpl(
+        sharedPreferences: _sharedPreferences,
+      );
+      debugPrint('✅ [DI] SettingsLocalDataSource OK');
 
-    // Inicializa o serviço de sincronização de favoritos
-    await _initializeFavoritesSyncService();
+      // Repositórios
+      debugPrint('📦 [DI] Criando repositórios...');
+      _apodRepository = ApodRepositoryImpl(
+        remoteDataSource: _apodRemoteDataSource,
+      );
+      debugPrint('✅ [DI] ApodRepository OK');
+      
+      _favoritesRepository = FavoritesRepositoryImpl(
+        localDataSource: _favoritesLocalDataSource,
+      );
+      debugPrint('✅ [DI] FavoritesRepository OK');
+      
+      _settingsRepository = SettingsRepositoryImpl(
+        localDataSource: _settingsLocalDataSource,
+      );
+      debugPrint('✅ [DI] SettingsRepository OK');
 
-    _isInitialized = true;
+      // Inicializa o serviço de sincronização de favoritos
+      debugPrint('🔄 [DI] Inicializando FavoritesSyncService...');
+      await _initializeFavoritesSyncService();
+      debugPrint('✅ [DI] FavoritesSyncService OK');
+
+      _isInitialized = true;
+      debugPrint('🎉 [DI] Injeção de dependências concluída com sucesso!');
+    } catch (e, stack) {
+      debugPrint('❌ [DI] ERRO na inicialização: $e');
+      debugPrint('❌ [DI] Stack trace: $stack');
+      rethrow;
+    }
   }
   
   /// Inicializa o serviço de sincronização de favoritos
   Future<void> _initializeFavoritesSyncService() async {
-    final result = await _favoritesRepository.getAllFavorites();
-    result.fold(
-      onSuccess: (favorites) {
-        final favoriteDates = favorites.map((f) => f.apod.date).toSet();
-        FavoritesSyncService.instance.initialize(favoriteDates);
-      },
-      onFailure: (_) {
-        // Se falhar, inicializa com conjunto vazio
-        FavoritesSyncService.instance.initialize({});
-      },
-    );
+    try {
+      final result = await _favoritesRepository.getAllFavorites();
+      result.fold(
+        onSuccess: (favorites) {
+          final favoriteDates = favorites.map((f) => f.apod.date).toSet();
+          FavoritesSyncService.instance.initialize(favoriteDates);
+          debugPrint('✅ [DI] Favoritos carregados: ${favoriteDates.length} itens');
+        },
+        onFailure: (failure) {
+          debugPrint('⚠️ [DI] Falha ao carregar favoritos: $failure');
+          // Se falhar, inicializa com conjunto vazio
+          FavoritesSyncService.instance.initialize({});
+        },
+      );
+    } catch (e, stack) {
+      debugPrint('❌ [DI] Erro ao inicializar FavoritesSyncService: $e');
+      debugPrint('❌ [DI] Stack: $stack');
+      // Continua com conjunto vazio
+      FavoritesSyncService.instance.initialize({});
+    }
   }
 
   // Getters para acesso às dependências

@@ -81,14 +81,11 @@ class _SplashScreenState extends State<SplashScreen>
           child: AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
-              return FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: _buildLogoContent(),
-                  ),
+              return Opacity(
+                opacity: _fadeAnimation.value,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value * _pulseAnimation.value,
+                  child: _buildLogoContent(),
                 ),
               );
             },

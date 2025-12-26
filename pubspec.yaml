@@ -1,7 +1,7 @@
 name: cosmic_vision
 description: "Explore o universo com as imagens astronômicas da NASA através da API APOD."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.6.0

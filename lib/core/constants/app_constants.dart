@@ -6,7 +6,7 @@ class AppConstants {
   static const String appName = 'Cosmic Vision';
 
   /// Versão do aplicativo
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '2.0.0';
 
   /// Descrição do aplicativo
   static const String appDescription =
@@ -16,7 +16,7 @@ class AppConstants {
   static const String databaseName = 'cosmic_vision.db';
 
   /// Versão do banco de dados
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   /// Chave para SharedPreferences - tema
   static const String prefKeyTheme = 'theme_mode';
@@ -38,6 +38,26 @@ class AppConstants {
 
   /// Máximo de itens no cache
   static const int maxCacheItems = 100;
+
+  // ==================== CACHE APOD ====================
+
+  /// Duração do cache para APOD de hoje (em horas)
+  static const int todayApodCacheHours = 24;
+
+  /// Duração do cache para APODs antigos (em dias)
+  static const int oldApodCacheDays = 30;
+
+  /// Número de dias para pré-carregamento
+  static const int preloadDays = 14;
+
+  /// Máximo de APODs em cache
+  static const int maxCachedApods = 500;
+
+  /// Chave para SharedPreferences - tamanho do cache
+  static const String prefKeyCacheSize = 'cache_size';
+
+  /// Chave para SharedPreferences - último cleanup
+  static const String prefKeyLastCacheCleanup = 'last_cache_cleanup';
 }
 
 /// Enum para tipos de mídia APOD

@@ -56,9 +56,9 @@
 -keep class com.baseflow.permissionhandler.** { *; }
 -dontwarn com.baseflow.permissionhandler.**
 
-# Image Gallery Saver
--keep class com.example.image_gallery_saver_plus.** { *; }
--dontwarn com.example.image_gallery_saver_plus.**
+# Saver Gallery
+-keep class com.fluttercandies.saver_gallery.** { *; }
+-dontwarn com.fluttercandies.saver_gallery.**
 
 # Share Plus
 -keep class dev.fluttercommunity.plus.share.** { *; }

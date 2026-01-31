@@ -75,14 +75,14 @@ class ApodModel extends ApodEntity {
   /// Cria um ApodModel a partir de dados do banco SQLite
   factory ApodModel.fromDatabase(Map<String, dynamic> map) {
     return ApodModel(
-      date: map['date'] as String,
-      title: map['title'] as String,
-      explanation: map['explanation'] as String,
-      url: map['url'] as String,
-      hdurl: map['hdurl'] as String?,
-      mediaType: MediaType.fromString(map['media_type'] as String? ?? 'image'),
-      copyright: map['copyright'] as String?,
-      thumbnailUrl: map['thumbnail_url'] as String?,
+      date: map['date']?.toString() ?? '',
+      title: map['title']?.toString() ?? '',
+      explanation: map['explanation']?.toString() ?? '',
+      url: map['url']?.toString() ?? '',
+      hdurl: map['hdurl']?.toString(),
+      mediaType: MediaType.fromString(map['media_type']?.toString() ?? 'image'),
+      copyright: map['copyright']?.toString(),
+      thumbnailUrl: map['thumbnail_url']?.toString(),
     );
   }
 

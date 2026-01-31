@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -81,38 +81,28 @@ class ImageService {
       
       Logger.debug('Salvando imagem: $fileName (${imageBytes.length} bytes)');
 
-      // Salva na galeria usando image_gallery_saver_plus
-      final result = await ImageGallerySaverPlus.saveImage(
+      // Salva na galeria usando saver_gallery
+      final result = await SaverGallery.saveImage(
         imageBytes,
         quality: 100,
-        name: fileName,
+        fileName: fileName,
+        androidRelativePath: 'Pictures/Cosmic Vision',
+        skipIfExists: false,
       );
 
       Logger.debug('Resultado do salvamento: $result');
 
-      // O resultado pode ser um Map ou um dynamic dependendo da plataforma
-      if (result != null) {
-        final isSuccess = result['isSuccess'] == true || result['isSuccess'] == 'true';
+      if (result.isSuccess) {
+        Logger.info('Imagem salva com sucesso');
         
-        if (isSuccess) {
-          final filePath = result['filePath']?.toString();
-          Logger.info('Imagem salva com sucesso: $filePath');
-          
-          return ImageServiceSuccess(
-            message: 'Imagem salva na galeria!',
-            filePath: filePath,
-          );
-        } else {
-          final errorMsg = result['errorMessage']?.toString() ?? 'Erro desconhecido ao salvar';
-          Logger.error('Falha ao salvar na galeria: $errorMsg');
-          return ImageServiceError(
-            message: 'Erro ao salvar na galeria: $errorMsg',
-          );
-        }
+        return const ImageServiceSuccess(
+          message: 'Imagem salva na galeria!',
+        );
       } else {
-        Logger.error('Resultado nulo ao salvar imagem');
-        return const ImageServiceError(
-          message: 'Erro ao salvar na galeria: resultado nulo',
+        final errorMsg = result.errorMessage ?? 'Erro desconhecido ao salvar';
+        Logger.error('Falha ao salvar na galeria: $errorMsg');
+        return ImageServiceError(
+          message: 'Erro ao salvar na galeria: $errorMsg',
         );
       }
     } on DioException catch (e) {

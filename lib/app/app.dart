@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants/app_constants.dart';
@@ -46,6 +47,18 @@ class CosmicVisionApp extends StatelessWidget {
           return MaterialApp(
             title: 'Cosmic Vision',
             debugShowCheckedModeBanner: false,
+            
+            // Localização em Português Brasil
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [
+              Locale('pt', 'BR'),
+              Locale('en', 'US'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             
             // Tema
             theme: AppTheme.lightTheme,

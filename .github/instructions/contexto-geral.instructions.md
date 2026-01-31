@@ -206,41 +206,74 @@ lib/
 │       ├── app_theme.dart (tema claro/escuro)
 │       ├── app_colors.dart (paleta de cores)
 │       ├── app_text_styles.dart (estilos de texto)
-│       └── app_dimensions.dart (espaçamentos)
+│       ├── app_dimensions.dart (espaçamentos)
+│       ├── app_gradients.dart (gradientes cósmicos)
+│       └── app_shadows.dart (sombras com glow)
 ├── core/
 │   ├── constants/
+│   │   ├── api_constants.dart (config da API NASA)
+│   │   ├── app_constants.dart (constantes gerais + cache)
+│   │   └── route_constants.dart (rotas nomeadas)
 │   ├── utils/
+│   │   ├── logger.dart (logging estruturado)
+│   │   └── result.dart (Result pattern para erros)
 │   ├── extensions/
+│   │   ├── context_extensions.dart
+│   │   ├── date_extensions.dart
+│   │   └── string_extensions.dart
 │   └── errors/
+│       ├── exceptions.dart (exceções customizadas)
+│       └── failures.dart (failures para camada domain)
 ├── data/
 │   ├── models/
+│   │   ├── apod_model.dart (com toDatabase/fromDatabase)
+│   │   └── favorite_model.dart
 │   ├── repositories/
+│   │   ├── apod_repository_impl.dart (cache-first strategy)
+│   │   ├── favorites_repository_impl.dart
+│   │   └── settings_repository_impl.dart
 │   └── datasources/
-│       ├── remote/ (API NASA)
-│       └── local/ (cache, favoritos)
+│       ├── remote/
+│       │   └── apod_remote_datasource.dart (API NASA)
+│       └── local/
+│           ├── database_helper.dart (SQLite config)
+│           ├── apod_local_datasource.dart (cache de APODs)
+│           ├── favorites_local_datasource.dart
+│           └── settings_local_datasource.dart
+├── di/
+│   └── dependency_injection.dart (service locator)
 ├── domain/
 │   ├── entities/
-│   ├── repositories/
-│   └── usecases/
+│   │   ├── apod_entity.dart
+│   │   └── favorite_entity.dart
+│   └── repositories/
+│       ├── apod_repository.dart (interface)
+│       ├── favorites_repository.dart
+│       └── settings_repository.dart
 ├── presentation/
-│   ├── widgets/ (componentes reutilizáveis)
+│   ├── widgets/
 │   │   ├── cosmic_card.dart
 │   │   ├── cosmic_button.dart
 │   │   ├── cosmic_app_bar.dart
-│   │   ├── image_viewer.dart
-│   │   └── loading_shimmer.dart
+│   │   ├── loading_shimmer.dart
+│   │   └── error_view.dart
 │   ├── screens/
-│   │   ├── splash/
-│   │   ├── home/
-│   │   ├── explore/
-│   │   ├── favorites/
-│   │   ├── settings/
-│   │   └── image_detail/
+│   │   ├── splash_screen.dart
+│   │   ├── home_screen.dart
+│   │   ├── explore_screen.dart
+│   │   ├── favorites_screen.dart
+│   │   ├── settings_screen.dart (com seção de cache)
+│   │   └── detail_screen.dart
 │   └── viewmodels/
+│       ├── base_viewmodel.dart
+│       ├── home_viewmodel.dart
+│       ├── explore_viewmodel.dart
+│       ├── favorites_viewmodel.dart
+│       └── settings_viewmodel.dart (com cache stats)
 └── services/
-    ├── notification_service.dart
-    ├── storage_service.dart
-    └── download_service.dart
+    ├── cache_service.dart (gerenciamento de cache)
+    ├── favorites_sync_service.dart
+    └── image_service.dart (download/share)
 ```
 
 ## 🔧 Dependências Principais Sugeridas
@@ -325,11 +358,73 @@ dependencies:
 3. Notificações diárias
 4. Cache de imagens
 
-### Fase 6: Polimento e Publicação
+### Fase 6: Sistema de Cache Offline ✅
+1. Tabela `apod_cache` no SQLite para persistir APODs
+2. `ApodLocalDataSource` com operações de cache
+3. Estratégia cache-first no `ApodRepositoryImpl`
+4. `CacheService` para gerenciamento e limpeza
+5. Pré-carregamento automático dos últimos 14 dias
+6. Seção de cache nas Configurações
+
+### Fase 7: Polimento e Publicação
 1. Testes
 2. Otimização de performance
 3. Tratamento de erros
 4. Preparação para stores
+
+## 💾 Sistema de Cache (Modo Offline)
+
+### Arquitetura Cache-First
+O app implementa uma estratégia **cache-first with network refresh** que permite funcionamento 100% offline quando a API NASA APOD está indisponível.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     FLUXO CACHE-FIRST                           │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Usuário solicita APOD → Verifica cache SQLite               │
+│  2. Cache válido? → Retorna imediatamente                       │
+│  3. Cache expirado/inexistente? → Busca API + salva no cache    │
+│  4. API indisponível? → Usa cache expirado como fallback        │
+│  5. Em background: pré-carrega últimos 14 dias                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Tabela SQLite: `apod_cache`
+```sql
+CREATE TABLE apod_cache (
+  date TEXT PRIMARY KEY,           -- YYYY-MM-DD
+  title TEXT NOT NULL,
+  explanation TEXT NOT NULL,
+  url TEXT NOT NULL,
+  hdurl TEXT,
+  media_type TEXT NOT NULL,
+  copyright TEXT,
+  thumbnail_url TEXT,
+  cached_at TEXT NOT NULL,         -- Timestamp do cache
+  expires_at TEXT NOT NULL         -- Expiração do cache
+);
+```
+
+### Estratégia de Expiração
+- **APOD de hoje:** 24 horas (pode ser atualizado pela NASA)
+- **APODs antigos:** 30 dias (dados históricos nunca mudam)
+- **Limpeza automática:** a cada 6 horas remove itens expirados
+- **Máximo em cache:** 500 APODs
+
+### Constantes de Cache (`app_constants.dart`)
+```dart
+static const int todayApodCacheHours = 24;
+static const int oldApodCacheDays = 30;
+static const int preloadDays = 14;
+static const int maxCachedApods = 500;
+```
+
+### CacheService
+Responsável por:
+- Limpeza periódica de cache expirado
+- Pré-carregamento de APODs recentes em background
+- Estatísticas de uso (total, válidos, expirados, cobertura)
+- Interface na tela de Settings para limpar cache manualmente
 
 ## 📝 Requisitos da API NASA APOD
 

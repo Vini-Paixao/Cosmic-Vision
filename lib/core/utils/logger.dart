@@ -13,6 +13,9 @@ class Logger {
   /// Log de informação
   static void info(String message, {String? tag}) {
     if (kDebugMode) {
+      final logMessage = '[${tag ?? _tag}] $message';
+      // ignore: avoid_print
+      print(logMessage);
       developer.log(
         message,
         name: tag ?? _tag,
@@ -24,6 +27,9 @@ class Logger {
   /// Log de warning
   static void warning(String message, {String? tag}) {
     if (kDebugMode) {
+      final logMessage = '[${tag ?? _tag}] ⚠️ $message';
+      // ignore: avoid_print
+      print(logMessage);
       developer.log(
         '⚠️ $message',
         name: tag ?? _tag,
@@ -40,6 +46,9 @@ class Logger {
     StackTrace? stackTrace,
   }) {
     if (kDebugMode) {
+      final logMessage = '[${tag ?? _tag}] ❌ $message${error != null ? ' | $error' : ''}';
+      // ignore: avoid_print
+      print(logMessage);
       developer.log(
         '❌ $message',
         name: tag ?? _tag,
@@ -53,6 +62,9 @@ class Logger {
   /// Log de debug
   static void debug(String message, {String? tag}) {
     if (kDebugMode) {
+      final logMessage = '[${tag ?? _tag}] 🐛 $message';
+      // ignore: avoid_print
+      print(logMessage);
       developer.log(
         '🐛 $message',
         name: tag ?? _tag,

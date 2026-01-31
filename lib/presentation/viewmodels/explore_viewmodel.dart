@@ -23,13 +23,28 @@ class ExploreViewModel extends BaseViewModel {
 
   List<ApodEntity> _apods = [];
   DateTime? _selectedDate;
+  DateTime? _selectedStartDate;
+  DateTime? _selectedEndDate;
   bool _isLoadingMore = false;
+  bool _sortNewestFirst = true;
 
   /// Lista de APODs carregados
   List<ApodEntity> get apods => _apods;
 
-  /// Data selecionada para busca
+  /// Data selecionada para busca (data única)
   DateTime? get selectedDate => _selectedDate;
+
+  /// Data inicial do período selecionado
+  DateTime? get selectedStartDate => _selectedStartDate;
+
+  /// Data final do período selecionado
+  DateTime? get selectedEndDate => _selectedEndDate;
+
+  /// Indica se há um período selecionado
+  bool get hasDateRange => _selectedStartDate != null && _selectedEndDate != null;
+
+  /// Indica se a ordenação é do mais recente para mais antigo
+  bool get sortNewestFirst => _sortNewestFirst;
 
   /// Indica se está carregando mais itens
   bool get isLoadingMore => _isLoadingMore;
@@ -49,6 +64,7 @@ class ExploreViewModel extends BaseViewModel {
     result.fold(
       onSuccess: (apods) async {
         _apods = apods;
+        _sortApods();
         await _loadFavoriteStatuses();
         setSuccess();
       },
@@ -65,6 +81,11 @@ class ExploreViewModel extends BaseViewModel {
   }) async {
     if (isLoading) return;
 
+    // Limpa seleção de data única e guarda o período
+    _selectedDate = null;
+    _selectedStartDate = startDate;
+    _selectedEndDate = endDate;
+
     setLoading();
 
     final result = await _apodRepository.getApodsByDateRange(
@@ -75,6 +96,7 @@ class ExploreViewModel extends BaseViewModel {
     result.fold(
       onSuccess: (apods) async {
         _apods = apods;
+        _sortApods();
         await _loadFavoriteStatuses();
         setSuccess();
       },
@@ -87,6 +109,8 @@ class ExploreViewModel extends BaseViewModel {
   /// Carrega APOD de uma data específica
   Future<void> loadApodByDate(DateTime date) async {
     _selectedDate = date;
+    _selectedStartDate = null;
+    _selectedEndDate = null;
     setLoading();
 
     final result = await _apodRepository.getApodByDate(date);
@@ -119,6 +143,7 @@ class ExploreViewModel extends BaseViewModel {
         final uniqueApods = newApods.where((a) => !existingDates.contains(a.date)).toList();
         
         _apods = [..._apods, ...uniqueApods];
+        _sortApods();
         await _loadFavoriteStatuses();
         _isLoadingMore = false;
         notifyListeners();
@@ -135,10 +160,33 @@ class ExploreViewModel extends BaseViewModel {
     await loadRandomApods();
   }
 
-  /// Limpa a seleção de data
+  /// Limpa a seleção de data única
   void clearDateSelection() {
     _selectedDate = null;
     notifyListeners();
+  }
+
+  /// Limpa a seleção de período
+  void clearDateRangeSelection() {
+    _selectedStartDate = null;
+    _selectedEndDate = null;
+    notifyListeners();
+  }
+
+  /// Alterna a ordenação entre mais recente e mais antigo
+  void toggleSortOrder() {
+    _sortNewestFirst = !_sortNewestFirst;
+    _sortApods();
+    notifyListeners();
+  }
+
+  /// Ordena a lista de APODs conforme a configuração atual
+  void _sortApods() {
+    if (_sortNewestFirst) {
+      _apods.sort((a, b) => b.date.compareTo(a.date));
+    } else {
+      _apods.sort((a, b) => a.date.compareTo(b.date));
+    }
   }
 
   /// Verifica se um APOD está nos favoritos

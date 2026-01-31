@@ -65,17 +65,51 @@ class DatabaseHelper {
       CREATE INDEX idx_favorites_title ON favorites(title)
     ''');
 
+    // Tabela de cache de APODs
+    await _createApodCacheTable(db);
+
     Logger.info('Tabelas criadas com sucesso');
+  }
+
+  /// Cria a tabela de cache de APODs
+  Future<void> _createApodCacheTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE apod_cache (
+        date TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        explanation TEXT NOT NULL,
+        url TEXT NOT NULL,
+        hdurl TEXT,
+        media_type TEXT NOT NULL,
+        copyright TEXT,
+        thumbnail_url TEXT,
+        cached_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL
+      )
+    ''');
+
+    // Índice para limpeza de cache expirado
+    await db.execute('''
+      CREATE INDEX idx_apod_cache_expires ON apod_cache(expires_at)
+    ''');
+
+    // Índice para busca por data de cache
+    await db.execute('''
+      CREATE INDEX idx_apod_cache_cached_at ON apod_cache(cached_at)
+    ''');
+
+    Logger.info('Tabela apod_cache criada com sucesso');
   }
 
   /// Atualiza o banco para novas versões
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     Logger.info('Atualizando banco de dados de v$oldVersion para v$newVersion');
 
-    // Implementar migrações quando necessário
-    // if (oldVersion < 2) {
-    //   await db.execute('ALTER TABLE ...');
-    // }
+    // Migração da versão 1 para 2: adiciona tabela apod_cache
+    if (oldVersion < 2) {
+      Logger.info('Migrando para v2: criando tabela apod_cache');
+      await _createApodCacheTable(db);
+    }
   }
 
   /// Fecha o banco de dados

@@ -56,6 +56,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Notificações',
                   children: [
                     _buildNotificationToggle(viewModel),
+                    if (viewModel.notificationsEnabled)
+                      _buildNotificationTime(viewModel),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.lg),
+
+                // Seção: Cache
+                _buildSection(
+                  title: 'Cache de Dados',
+                  children: [
+                    _buildCacheInfo(viewModel),
+                    _buildClearCacheButton(viewModel),
                   ],
                 ),
                 const SizedBox(height: AppDimensions.lg),
@@ -188,16 +200,266 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _buildSettingItem(
       icon: Icons.notifications_rounded,
       title: 'Notificação diária',
-      subtitle: 'Receba um lembrete quando o novo APOD estiver disponível',
+      subtitle: viewModel.notificationsEnabled 
+          ? 'Ativada - ${viewModel.notificationTimeFormatted}'
+          : 'Receba um lembrete quando o novo APOD estiver disponível',
       trailing: Switch(
         value: viewModel.notificationsEnabled,
-        onChanged: viewModel.setNotificationsEnabled,
-        activeColor: AppColors.nebulaPurple,
+        onChanged: (enabled) async {
+          final success = await viewModel.setNotificationsEnabled(enabled);
+          if (!success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: AppColors.white),
+                    SizedBox(width: AppDimensions.sm),
+                    Expanded(
+                      child: Text(
+                        'Permissão de notificação negada. Ative nas configurações do dispositivo.',
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: AppColors.supernovaOrange,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                ),
+                margin: const EdgeInsets.all(AppDimensions.md),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        },
+        activeThumbColor: AppColors.nebulaPurple,
         activeTrackColor: AppColors.nebulaPurple.withValues(alpha: 0.5),
         inactiveThumbColor: AppColors.textMuted,
         inactiveTrackColor: AppColors.surfaceLight,
       ),
     );
+  }
+
+  Widget _buildNotificationTime(SettingsViewModel viewModel) {
+    return _buildSettingItem(
+      icon: Icons.access_time_rounded,
+      title: 'Horário da notificação',
+      subtitle: viewModel.notificationTimeFormatted,
+      onTap: () => _showTimePicker(viewModel),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.science_rounded,
+              color: AppColors.galacticTeal,
+              size: 20,
+            ),
+            tooltip: 'Testar notificação',
+            onPressed: () async {
+              await viewModel.sendTestNotification();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: AppColors.white),
+                        SizedBox(width: AppDimensions.sm),
+                        Text('Notificação de teste enviada!'),
+                      ],
+                    ),
+                    backgroundColor: AppColors.galacticTeal,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    ),
+                    margin: const EdgeInsets.all(AppDimensions.md),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showTimePicker(SettingsViewModel viewModel) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: viewModel.notificationHour,
+        minute: viewModel.notificationMinute,
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.galacticTeal,
+              onPrimary: AppColors.white,
+              surface: AppColors.surfaceDark,
+              onSurface: AppColors.textPrimary,
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppColors.deepSpace,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+              ),
+            ),
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: AppColors.deepSpace,
+              hourMinuteColor: AppColors.eventHorizon,
+              hourMinuteTextColor: AppColors.textPrimary,
+              dialBackgroundColor: AppColors.eventHorizon,
+              dialHandColor: AppColors.galacticTeal,
+              dialTextColor: AppColors.textPrimary,
+              entryModeIconColor: AppColors.stardust,
+              helpTextStyle: AppTextStyles.titleSmall.copyWith(
+                color: AppColors.stardust,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      await viewModel.setNotificationTime(picked.hour, picked.minute);
+    }
+  }
+
+  Widget _buildCacheInfo(SettingsViewModel viewModel) {
+    final stats = viewModel.cacheStats;
+    
+    String subtitle;
+    if (viewModel.isCacheLoading) {
+      subtitle = 'Carregando...';
+    } else if (stats == null) {
+      subtitle = 'Não foi possível carregar informações';
+    } else if (stats.totalCount == 0) {
+      subtitle = 'Nenhum APOD em cache';
+    } else {
+      subtitle = '${stats.validCount} APODs salvos';
+      if (stats.coverageDays > 0) {
+        subtitle += ' (${stats.coverageDays} dias de cobertura)';
+      }
+    }
+
+    return _buildSettingItem(
+      icon: Icons.storage_rounded,
+      title: 'Dados offline',
+      subtitle: subtitle,
+      trailing: viewModel.isCacheLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.nebulaPurple,
+              ),
+            )
+          : IconButton(
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: AppColors.stardust,
+              ),
+              onPressed: viewModel.loadCacheStats,
+            ),
+    );
+  }
+
+  Widget _buildClearCacheButton(SettingsViewModel viewModel) {
+    return _buildSettingItem(
+      icon: Icons.delete_outline_rounded,
+      title: 'Limpar cache',
+      subtitle: 'Remove todos os dados salvos localmente',
+      onTap: viewModel.isCacheClearing
+          ? null
+          : () => _showClearCacheDialog(viewModel),
+      trailing: viewModel.isCacheClearing
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.nebulaPurple,
+              ),
+            )
+          : const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textMuted,
+            ),
+    );
+  }
+
+  Future<void> _showClearCacheDialog(SettingsViewModel viewModel) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        ),
+        title: Text(
+          'Limpar cache?',
+          style: AppTextStyles.titleMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Isso removerá todos os APODs salvos localmente. '
+          'O app precisará de conexão com a internet para exibir conteúdo.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancelar',
+              style: AppTextStyles.labelLarge.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Limpar',
+              style: AppTextStyles.labelLarge.copyWith(
+                color: AppColors.supernovaOrange,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await viewModel.clearCache();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Cache limpo com sucesso'),
+            backgroundColor: AppColors.surfaceDark,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildSettingItem({

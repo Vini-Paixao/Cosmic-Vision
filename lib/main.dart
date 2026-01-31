@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'app/app.dart';
 import 'di/dependency_injection.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   // Zona de erro para capturar exceções não tratadas
@@ -55,6 +56,11 @@ void main() async {
         ),
       );
       debugPrint('✅ [Main] UI Overlay configurado');
+
+      // Inicializa o serviço de notificações
+      debugPrint('🔔 [Main] Inicializando NotificationService...');
+      await NotificationService.instance.initialize();
+      debugPrint('✅ [Main] NotificationService inicializado');
 
       // Inicializa as dependências
       debugPrint('🔧 [Main] Inicializando dependências...');

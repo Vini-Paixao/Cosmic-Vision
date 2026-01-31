@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -49,6 +50,9 @@ class _DetailScreenState extends State<DetailScreen> {
             autoPlay: false,
             mute: false,
             controlsVisibleAtStart: true,
+            disableDragSeek: false,
+            hideControls: false,
+            showLiveFullscreenButton: false, // Desabilita botão fullscreen nativo
           ),
         );
       }
@@ -83,6 +87,8 @@ class _DetailScreenState extends State<DetailScreen> {
                       actions: [
                         _buildFavoriteButton(viewModel),
                         _buildShareButton(),
+                        if (widget.apod.isVideo && _youtubeController != null)
+                          _buildFullscreenButton(),
                       ],
                       flexibleSpace: FlexibleSpaceBar(
                         background: _buildMediaContent(),
@@ -337,7 +343,74 @@ class _DetailScreenState extends State<DetailScreen> {
         playedColor: AppColors.nebulaPurple,
         handleColor: AppColors.stardust,
       ),
+      // Remove o botão de fullscreen nativo e customiza os controles
+      bottomActions: [
+        const SizedBox(width: 14),
+        CurrentPosition(),
+        const SizedBox(width: 8),
+        ProgressBar(
+          isExpanded: true,
+          colors: const ProgressBarColors(
+            playedColor: AppColors.nebulaPurple,
+            handleColor: AppColors.stardust,
+            backgroundColor: AppColors.surfaceDark,
+            bufferedColor: AppColors.cosmicBlue,
+          ),
+        ),
+        const SizedBox(width: 8),
+        RemainingDuration(),
+        const SizedBox(width: 14),
+        // Sem o FullScreenButton aqui - removido intencionalmente
+      ],
     );
+  }
+
+  /// Botão de fullscreen para a AppBar
+  Widget _buildFullscreenButton() {
+    return Padding(
+      padding: const EdgeInsets.all(AppDimensions.sm),
+      child: GestureDetector(
+        onTap: _openVideoFullScreen,
+        child: Container(
+          padding: const EdgeInsets.all(AppDimensions.sm),
+          decoration: BoxDecoration(
+            color: AppColors.black.withValues(alpha: 0.5),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.fullscreen_rounded,
+            size: 22,
+            color: AppColors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Abre o vídeo em tela cheia (landscape)
+  void _openVideoFullScreen() {
+    final videoId = widget.apod.youtubeVideoId;
+    if (videoId == null) return;
+
+    // Pausa o vídeo atual e pega a posição
+    final currentPosition = _youtubeController?.value.position ?? Duration.zero;
+    _youtubeController?.pause();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _VideoFullScreen(
+          videoId: videoId,
+          initialPosition: currentPosition,
+          title: widget.apod.title,
+        ),
+      ),
+    ).then((_) {
+      // Quando voltar, restaura a orientação para portrait
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    });
   }
 
   Widget _buildContent(DetailViewModel viewModel) {
@@ -638,6 +711,196 @@ class _FullScreenImage extends StatelessWidget {
           loadingBuilder: (context, event) => const Center(
             child: CircularProgressIndicator(color: AppColors.nebulaPurple),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tela de vídeo em fullscreen (landscape)
+class _VideoFullScreen extends StatefulWidget {
+  const _VideoFullScreen({
+    required this.videoId,
+    required this.initialPosition,
+    required this.title,
+  });
+
+  final String videoId;
+  final Duration initialPosition;
+  final String title;
+
+  @override
+  State<_VideoFullScreen> createState() => _VideoFullScreenState();
+}
+
+class _VideoFullScreenState extends State<_VideoFullScreen> {
+  late YoutubePlayerController _controller;
+  bool _isReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Força orientação landscape para o vídeo
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
+    // Esconde a UI do sistema para uma experiência imersiva
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        hideControls: false,
+        controlsVisibleAtStart: true,
+        enableCaption: true,
+        forceHD: true,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    
+    // Restaura a UI do sistema
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
+    super.dispose();
+  }
+
+  void _exitFullScreen() {
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          // Restaura orientação ao sair
+          SystemChrome.setPreferredOrientations([
+            DeviceOrientation.portraitUp,
+            DeviceOrientation.portraitDown,
+          ]);
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Player de vídeo em tela cheia
+            Center(
+              child: YoutubePlayer(
+                controller: _controller,
+                showVideoProgressIndicator: true,
+                progressIndicatorColor: AppColors.nebulaPurple,
+                progressColors: const ProgressBarColors(
+                  playedColor: AppColors.nebulaPurple,
+                  handleColor: AppColors.stardust,
+                  bufferedColor: AppColors.asteroidGray,
+                  backgroundColor: AppColors.eventHorizon,
+                ),
+                // Remove o botão de fullscreen nativo
+                bottomActions: [
+                  const SizedBox(width: 14),
+                  CurrentPosition(),
+                  const SizedBox(width: 8),
+                  ProgressBar(
+                    isExpanded: true,
+                    colors: const ProgressBarColors(
+                      playedColor: AppColors.nebulaPurple,
+                      handleColor: AppColors.stardust,
+                      backgroundColor: AppColors.eventHorizon,
+                      bufferedColor: AppColors.asteroidGray,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  RemainingDuration(),
+                  const SizedBox(width: 14),
+                ],
+                onReady: () {
+                  setState(() => _isReady = true);
+                  // Busca a posição inicial se fornecida
+                  if (widget.initialPosition.inSeconds > 0) {
+                    _controller.seekTo(widget.initialPosition);
+                  }
+                },
+              ),
+            ),
+            
+            // Botão para sair do fullscreen
+            Positioned(
+              top: 16,
+              left: 16,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _exitFullScreen,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.fullscreen_exit_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Sair',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            // Título do vídeo
+            Positioned(
+              top: 16,
+              right: 16,
+              left: 100,
+              child: SafeArea(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ),
+            
+            // Loading indicator
+            if (!_isReady)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.nebulaPurple,
+                ),
+              ),
+          ],
         ),
       ),
     );

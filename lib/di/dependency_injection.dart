@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/api_constants.dart';
+import '../data/datasources/local/apod_local_datasource.dart';
 import '../data/datasources/local/database_helper.dart';
 import '../data/datasources/local/favorites_local_datasource.dart';
 import '../data/datasources/local/settings_local_datasource.dart';
@@ -13,6 +14,7 @@ import '../data/repositories/settings_repository_impl.dart';
 import '../domain/repositories/apod_repository.dart';
 import '../domain/repositories/favorites_repository.dart';
 import '../domain/repositories/settings_repository.dart';
+import '../services/cache_service.dart';
 import '../services/favorites_sync_service.dart';
 
 /// Container de injeção de dependências
@@ -28,6 +30,7 @@ class DependencyInjection {
 
   // Datasources
   late final ApodRemoteDataSource _apodRemoteDataSource;
+  late final ApodLocalDataSource _apodLocalDataSource;
   late final FavoritesLocalDataSource _favoritesLocalDataSource;
   late final SettingsLocalDataSource _settingsLocalDataSource;
 
@@ -83,6 +86,11 @@ class DependencyInjection {
       debugPrint('📡 [DI] Criando datasources...');
       _apodRemoteDataSource = ApodRemoteDataSourceImpl(dio: _dio);
       debugPrint('✅ [DI] ApodRemoteDataSource OK');
+
+      _apodLocalDataSource = ApodLocalDataSourceImpl(
+        databaseHelper: DatabaseHelper.instance,
+      );
+      debugPrint('✅ [DI] ApodLocalDataSource OK');
       
       _favoritesLocalDataSource = FavoritesLocalDataSourceImpl(
         databaseHelper: DatabaseHelper.instance,
@@ -98,8 +106,9 @@ class DependencyInjection {
       debugPrint('📦 [DI] Criando repositórios...');
       _apodRepository = ApodRepositoryImpl(
         remoteDataSource: _apodRemoteDataSource,
+        localDataSource: _apodLocalDataSource,
       );
-      debugPrint('✅ [DI] ApodRepository OK');
+      debugPrint('✅ [DI] ApodRepository OK (com cache local)');
       
       _favoritesRepository = FavoritesRepositoryImpl(
         localDataSource: _favoritesLocalDataSource,
@@ -115,6 +124,11 @@ class DependencyInjection {
       debugPrint('🔄 [DI] Inicializando FavoritesSyncService...');
       await _initializeFavoritesSyncService();
       debugPrint('✅ [DI] FavoritesSyncService OK');
+
+      // Inicializa o serviço de cache
+      debugPrint('💾 [DI] Inicializando CacheService...');
+      _initializeCacheService();
+      debugPrint('✅ [DI] CacheService OK');
 
       _isInitialized = true;
       debugPrint('🎉 [DI] Injeção de dependências concluída com sucesso!');
@@ -149,11 +163,33 @@ class DependencyInjection {
     }
   }
 
+  /// Inicializa o serviço de cache
+  void _initializeCacheService() {
+    CacheService.instance.initialize(
+      localDataSource: _apodLocalDataSource,
+      remoteDataSource: _apodRemoteDataSource,
+      prefs: _sharedPreferences,
+    );
+
+    // Inicia pré-carregamento em background após inicialização
+    Future.delayed(const Duration(seconds: 5), () {
+      debugPrint('🚀 [DI] Iniciando pré-carregamento de APODs em background...');
+      CacheService.instance.preloadRecentApods().then((count) {
+        if (count > 0) {
+          debugPrint('✅ [DI] Pré-carregamento concluído: $count novos APODs');
+        }
+      }).catchError((e) {
+        debugPrint('⚠️ [DI] Erro no pré-carregamento: $e');
+      });
+    });
+  }
+
   // Getters para acesso às dependências
   SharedPreferences get sharedPreferences => _sharedPreferences;
   Dio get dio => _dio;
   
   ApodRemoteDataSource get apodRemoteDataSource => _apodRemoteDataSource;
+  ApodLocalDataSource get apodLocalDataSource => _apodLocalDataSource;
   FavoritesLocalDataSource get favoritesLocalDataSource => _favoritesLocalDataSource;
   SettingsLocalDataSource get settingsLocalDataSource => _settingsLocalDataSource;
   

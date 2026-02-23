@@ -6,6 +6,7 @@ plugins {
 }
 
 import java.util.Properties
+import java.io.File
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
@@ -32,7 +33,10 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+            storeFile = keystoreProperties["storeFile"]?.let { 
+                val f = File(it as String)
+                if (f.isAbsolute) f else file(it)
+            }
             storePassword = keystoreProperties["storePassword"] as String?
         }
     }

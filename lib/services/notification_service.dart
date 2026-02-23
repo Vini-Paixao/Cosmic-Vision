@@ -265,7 +265,7 @@ class NotificationService {
         message,
         scheduledDate,
         notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: 'daily_apod',
       );
